@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>五子棋 (Gomoku)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: "Microsoft YaHei", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.3);
+            padding: 30px;
+            max-width: 900px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2em;
+        }
+        
+        .settings {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+        
+        .setting-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .setting-group label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #555;
+            font-size: 14px;
+        }
+        
+        .setting-group select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            background: white;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+        
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        #newGame {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        #undo {
+            background: #ff9800;
+            color: white;
+        }
+        
+        #restart {
+            background: #2196F3;
+            color: white;
+        }
+        
+        .game-area {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+        
+        #boardCanvas {
+            border: 2px solid #333;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            cursor: crosshair;
+            background: #daa520;
+        }
+        
+        .info-panel {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .status-box {
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .status-box h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .status-item {
+            margin: 8px 0;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .status-item strong {
+            color: #333;
+        }
+        
+        .message-box {
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 5px;
+            min-height: 60px;
+            border-left: 4px solid #2196F3;
+        }
+        
+        .message-box.error {
+            background: #ffebee;
+            border-left-color: #f44336;
+        }
+        
+        .message-box.success {
+            background: #e8f5e9;
+            border-left-color: #4CAF50;
+        }
+        
+        .message-box p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .player-indicator {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin-right: 5px;
+            border: 2px solid #333;
+        }
+        
+        .player-indicator.black {
+            background: #000;
+        }
+        
+        .player-indicator.white {
+            background: #fff;
+        }
+        
+        @media (max-width: 768px) {
+            .game-area {
+                flex-direction: column;
+            }
+            
+            .settings {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>五子棋 (Gomoku)</h1>
+        
+        <div class="settings" id="settings">
+            <div class="setting-group">
+                <label>棋盤大小 (Board Size):</label>
+                <select id="boardSize">
+                    <option value="15" selected>15×15</option>
+                    <option value="19">19×19</option>
+                </select>
+            </div>
+            
+            <div class="setting-group">
+                <label>規則模式 (Rules):</label>
+                <select id="ruleMode">
+                    <option value="free">自由規則 (Free)</option>
+                    <option value="forbidden" selected>禁手規則 (Forbidden)</option>
+                </select>
+            </div>
+            
+            <div class="setting-group">
+                <label>對戰模式 (Mode):</label>
+                <select id="versusMode">
+                    <option value="2p">雙人 (2 Player)</option>
+                    <option value="ai" selected>人機 (Vs AI)</option>
+                </select>
+            </div>
+            
+            <div class="setting-group">
+                <label>人類顏色 (Human Color):</label>
+                <select id="humanColor">
+                    <option value="1" selected>執黑 (Black)</option>
+                    <option value="2">執白 (White)</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button id="newGame">開始新局 (New Game)</button>
+            <button id="undo">悔棋 (Undo)</button>
+            <button id="restart">重開 (Restart)</button>
+        </div>
+        
+        <div class="game-area">
+            <canvas id="boardCanvas"></canvas>
+            
+            <div class="info-panel">
+                <div class="status-box">
+                    <h3>遊戲狀態 (Game Status)</h3>
+                    <div class="status-item">
+                        <strong>輪到:</strong> 
+                        <span id="currentPlayer">-</span>
+                    </div>
+                    <div class="status-item">
+                        <strong>模式:</strong> 
+                        <span id="currentMode">-</span>
+                    </div>
+                    <div class="status-item">
+                        <strong>規則:</strong> 
+                        <span id="currentRule">-</span>
+                    </div>
+                    <div class="status-item">
+                        <strong>步數:</strong> 
+                        <span id="moveCount">0</span>
+                    </div>
+                </div>
+                
+                <div class="message-box" id="messageBox">
+                    <p>請點擊「開始新局」開始遊戲</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== 常數定義 ====================
+        const EMPTY = 0;
+        const BLACK = 1;
+        const WHITE = 2;
+        const DIRECTIONS = [[1,0], [0,1], [1,1], [1,-1]]; // 橫、直、斜、反斜
+        
+        const PLAYER_NAMES = {
+            [BLACK]: '黑棋 (Black)',
+            [WHITE]: '白棋 (White)'
+        };
+        
+        const CELL_SIZE = 30; // 格子大小
+        const STONE_RADIUS = 12; // 棋子半徑
+        const BOARD_PADDING = 30; // 棋盤邊距
+        
+        // ==================== 遊戲狀態 ====================
+        let gameState = {
+            boardSize: 15,
+            board: null,
+            moves: [],
+            currentPlayer: BLACK,
+            gameOver: false,
+            config: {
+                ruleMode: 'forbidden',
+                versusMode: 'ai',
+                humanColor: BLACK
+            },
+            lastMove: null
+        };
+        
+        // ==================== DOM 元素 ====================
+        const canvas = document.getElementById('boardCanvas');
+        const ctx = canvas.getContext('2d');
+        const messageBox = document.getElementById('messageBox');
+        
+        // ==================== 初始化 ====================
+        function initGame() {
+            const size = parseInt(document.getElementById('boardSize').value);
+            const ruleMode = document.getElementById('ruleMode').value;
+            const versusMode = document.getElementById('versusMode').value;
+            const humanColor = parseInt(document.getElementById('humanColor').value);
+            
+            gameState.boardSize = size;
+            gameState.board = new Int8Array(size * size);
+            gameState.moves = [];
+            gameState.currentPlayer = BLACK;
+            gameState.gameOver = false;
+            gameState.lastMove = null;
+            gameState.config = { ruleMode, versusMode, humanColor };
+            
+            // 設定 Canvas 大小
+            const canvasSize = size * CELL_SIZE + BOARD_PADDING * 2;
+            canvas.width = canvasSize;
+            canvas.height = canvasSize;
+            
+            drawBoard();
+            updateStatus();
+            showMessage('遊戲開始！輪到黑棋。', 'info');
+            
+            // 如果 AI 執黑且人機對戰，AI 先手
+            if (versusMode === 'ai' && humanColor === WHITE) {
+                setTimeout(() => aiMove(), 300);
+            }
+        }
+        
+        // ==================== 棋盤繪製 ====================
+        function drawBoard() {
+            const size = gameState.boardSize;
+            
+            // 清空畫布並填充背景
+            ctx.fillStyle = '#daa520';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 繪製網格線
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1;
+            
+            for (let i = 0; i < size; i++) {
+                // 垂直線
+                ctx.beginPath();
+                ctx.moveTo(BOARD_PADDING + i * CELL_SIZE, BOARD_PADDING);
+                ctx.lineTo(BOARD_PADDING + i * CELL_SIZE, BOARD_PADDING + (size - 1) * CELL_SIZE);
+                ctx.stroke();
+                
+                // 水平線
+                ctx.beginPath();
+                ctx.moveTo(BOARD_PADDING, BOARD_PADDING + i * CELL_SIZE);
+                ctx.lineTo(BOARD_PADDING + (size - 1) * CELL_SIZE, BOARD_PADDING + i * CELL_SIZE);
+                ctx.stroke();
+            }
+            
+            // 繪製星位
+            const starPoints = size === 15 ? 
+                [[3,3], [3,11], [7,7], [11,3], [11,11]] :
+                [[3,3], [3,9], [3,15], [9,3], [9,9], [9,15], [15,3], [15,9], [15,15]];
+            
+            ctx.fillStyle = '#000';
+            starPoints.forEach(([x, y]) => {
+                ctx.beginPath();
+                ctx.arc(BOARD_PADDING + x * CELL_SIZE, BOARD_PADDING + y * CELL_SIZE, 3, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+            
+            // 繪製所有棋子
+            gameState.moves.forEach((move, index) => {
+                drawStone(move.x, move.y, move.color, index === gameState.moves.length - 1);
+            });
+        }
+        
+        function drawStone(x, y, color, isLast = false) {
+            const px = BOARD_PADDING + x * CELL_SIZE;
+            const py = BOARD_PADDING + y * CELL_SIZE;
+            
+            // 繪製棋子
+            ctx.fillStyle = color === BLACK ? '#000' : '#fff';
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1;
+            
+            ctx.beginPath();
+            ctx.arc(px, py, STONE_RADIUS, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.stroke();
+            
+            // 標記最後一步
+            if (isLast) {
+                ctx.fillStyle = color === BLACK ? '#fff' : '#f00';
+                ctx.beginPath();
+                ctx.arc(px, py, 4, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+        }
+        
+        // ==================== 點擊處理 ====================
+        canvas.addEventListener('click', (e) => {
+            if (gameState.gameOver) {
+                showMessage('遊戲已結束，請開始新局。', 'error');
+                return;
+            }
+            
+            // 如果是人機模式且不是人類回合，不處理點擊
+            if (gameState.config.versusMode === 'ai' && 
+                gameState.currentPlayer !== gameState.config.humanColor) {
+                return;
+            }
+            
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+            
+            // 找最近的交叉點
+            const x = Math.round((clickX - BOARD_PADDING) / CELL_SIZE);
+            const y = Math.round((clickY - BOARD_PADDING) / CELL_SIZE);
+            
+            makeMove(x, y);
+        });
+        
+        // ==================== 落子處理 ====================
+        function makeMove(x, y) {
+            // 檢查合法性
+            const validation = validateMove(x, y, gameState.currentPlayer);
+            if (!validation.valid) {
+                showMessage(validation.message, 'error');
+                return;
+            }
+            
+            // 執行落子
+            const index = y * gameState.boardSize + x;
+            gameState.board[index] = gameState.currentPlayer;
+            gameState.moves.push({ x, y, color: gameState.currentPlayer });
+            gameState.lastMove = { x, y };
+            
+            drawBoard();
+            
+            // 判定勝負
+            const winCheck = checkWin(x, y, gameState.currentPlayer);
+            if (winCheck.win) {
+                gameState.gameOver = true;
+                showMessage(`${PLAYER_NAMES[gameState.currentPlayer]} 獲勝！`, 'success');
+                updateStatus();
+                return;
+            }
+            
+            // 換手
+            gameState.currentPlayer = gameState.currentPlayer === BLACK ? WHITE : BLACK;
+            updateStatus();
+            showMessage(`輪到 ${PLAYER_NAMES[gameState.currentPlayer]}`, 'info');
+            
+            // 如果是人機模式且輪到 AI，AI 自動落子
+            if (gameState.config.versusMode === 'ai' && 
+                gameState.currentPlayer !== gameState.config.humanColor) {
+                setTimeout(() => aiMove(), 300);
+            }
+        }
+        
+        // ==================== 合法性檢查 ====================
+        function validateMove(x, y, player) {
+            // 越界檢查
+            if (x < 0 || x >= gameState.boardSize || y < 0 || y >= gameState.boardSize) {
+                return { valid: false, message: '超出棋盤範圍 (OUT_OF_RANGE)' };
+            }
+            
+            // 佔用檢查
+            const index = y * gameState.boardSize + x;
+            if (gameState.board[index] !== EMPTY) {
+                return { valid: false, message: '此位置已有棋子 (OCCUPIED)' };
+            }
+            
+            // 遊戲結束檢查
+            if (gameState.gameOver) {
+                return { valid: false, message: '遊戲已結束 (GAME_OVER)' };
+            }
+            
+            // 禁手檢查（僅黑棋 + 禁手模式）
+            if (gameState.config.ruleMode === 'forbidden' && player === BLACK) {
+                const forbiddenCheck = checkForbidden(x, y, player);
+                if (forbiddenCheck.forbidden) {
+                    return { valid: false, message: forbiddenCheck.message };
+                }
+            }
+            
+            return { valid: true };
+        }
+        
+        // ==================== 禁手檢查 ====================
+        function checkForbidden(x, y, player) {
+            // 模擬落子
+            const index = y * gameState.boardSize + x;
+            gameState.board[index] = player;
+            
+            // 1. 長連禁手檢查
+            const maxLen = getMaxLength(x, y, player);
+            if (maxLen >= 6) {
+                gameState.board[index] = EMPTY;
+                return { forbidden: true, message: '長連禁手 (FORBIDDEN_OVERLINE)' };
+            }
+            
+            // 2. 四四禁手檢查
+            const fourCount = countThreats(x, y, player, true); // true = 包含沖四
+            if (fourCount >= 2) {
+                gameState.board[index] = EMPTY;
+                return { forbidden: true, message: '四四禁手 (FORBIDDEN_44)' };
+            }
+            
+            // 3. 三三禁手檢查
+            const threeCount = countLiveThrees(x, y, player);
+            if (threeCount >= 2) {
+                gameState.board[index] = EMPTY;
+                return { forbidden: true, message: '三三禁手 (FORBIDDEN_33)' };
+            }
+            
+            // 還原棋盤
+            gameState.board[index] = EMPTY;
+            return { forbidden: false };
+        }
+        
+        // ==================== 連線計算 ====================
+        function getMaxLength(x, y, player) {
+            let maxLen = 0;
+            
+            DIRECTIONS.forEach(([dx, dy]) => {
+                let len = 1; // 包含當前位置
+                
+                // 正方向
+                let nx = x + dx, ny = y + dy;
+                while (isValid(nx, ny) && getCell(nx, ny) === player) {
+                    len++;
+                    nx += dx;
+                    ny += dy;
+                }
+                
+                // 反方向
+                nx = x - dx;
+                ny = y - dy;
+                while (isValid(nx, ny) && getCell(nx, ny) === player) {
+                    len++;
+                    nx -= dx;
+                    ny -= dy;
+                }
+                
+                maxLen = Math.max(maxLen, len);
+            });
+            
+            return maxLen;
+        }
+        
+        // ==================== 勝負判定 ====================
+        function checkWin(x, y, player) {
+            const maxLen = getMaxLength(x, y, player);
+            
+            // 自由規則：連5以上即勝
+            if (gameState.config.ruleMode === 'free') {
+                return { win: maxLen >= 5, length: maxLen };
+            }
+            
+            // 禁手規則
+            if (player === WHITE) {
+                // 白棋：連5以上即勝（含長連）
+                return { win: maxLen >= 5, length: maxLen };
+            } else {
+                // 黑棋：恰好5連（長連已在禁手中被擋）
+                return { win: maxLen === 5, length: maxLen };
+            }
+        }
+        
+        // ==================== 活三計數 ====================
+        function countLiveThrees(x, y, player) {
+            const patterns = [
+                '.XXX.',
+                '.XX.X.',
+                '.X.XX.'
+            ];
+            
+            return countPatternDirections(x, y, player, patterns);
+        }
+        
+        // ==================== 四威脅計數（含沖四）====================
+        function countThreats(x, y, player, includeRushFour = true) {
+            const patterns = [
+                '.XXXX.', // 活四
+            ];
+            
+            if (includeRushFour) {
+                patterns.push(
+                    'XXXX.', // 沖四
+                    '.XXXX',
+                    'XXX.X',
+                    'XX.XX',
+                    'X.XXX'
+                );
+            }
+            
+            return countPatternDirections(x, y, player, patterns);
+        }
+        
+        // ==================== 模式匹配（方向去重）====================
+        function countPatternDirections(x, y, player, patterns) {
+            let directionCount = 0;
+            const playerChar = player === BLACK ? 'X' : 'O';
+            const opponentChar = player === BLACK ? 'O' : 'X';
+            
+            DIRECTIONS.forEach(([dx, dy]) => {
+                const window = extractWindow(x, y, dx, dy, 11);
+                const windowStr = window.map(cell => {
+                    if (cell === null) return '#'; // 越界
+                    if (cell === player) return playerChar;
+                    if (cell === EMPTY) return '.';
+                    return opponentChar;
+                }).join('');
+                
+                // 檢查是否匹配任一模式
+                const matched = patterns.some(pattern => windowStr.includes(pattern));
+                if (matched) {
+                    directionCount++;
+                }
+            });
+            
+            return directionCount;
+        }
+        
+        // ==================== 提取視窗 ====================
+        function extractWindow(x, y, dx, dy, size) {
+            const half = Math.floor(size / 2);
+            const window = [];
+            
+            for (let i = -half; i <= half; i++) {
+                const nx = x + i * dx;
+                const ny = y + i * dy;
+                
+                if (isValid(nx, ny)) {
+                    window.push(getCell(nx, ny));
+                } else {
+                    window.push(null); // 越界
+                }
+            }
+            
+            return window;
+        }
+        
+        // ==================== AI 落子 ====================
+        function aiMove() {
+            if (gameState.gameOver) return;
+            
+            const aiColor = gameState.currentPlayer;
+            const opponentColor = aiColor === BLACK ? WHITE : BLACK;
+            
+            // 獲取候選點
+            const candidates = getCandidates();
+            if (candidates.length === 0) return;
+            
+            // 評分系統
+            let bestScore = -Infinity;
+            let bestMoves = [];
+            
+            candidates.forEach(([x, y]) => {
+                // 跳過禁手點
+                if (gameState.config.ruleMode === 'forbidden' && aiColor === BLACK) {
+                    const validation = validateMove(x, y, aiColor);
+                    if (!validation.valid) return;
+                }
+                
+                let score = 0;
+                
+                // 模擬落子
+                const index = y * gameState.boardSize + x;
+                gameState.board[index] = aiColor;
+                
+                // 1. 檢查是否能立即獲勝
+                const winCheck = checkWin(x, y, aiColor);
+                if (winCheck.win) {
+                    score += 100000;
+                }
+                
+                gameState.board[index] = EMPTY;
+                
+                // 2. 檢查對手是否有立即勝點
+                gameState.board[index] = opponentColor;
+                const opponentWinCheck = checkWin(x, y, opponentColor);
+                if (opponentWinCheck.win) {
+                    score += 50000;
+                }
+                gameState.board[index] = EMPTY;
+                
+                // 3. 評估己方威脅
+                gameState.board[index] = aiColor;
+                const myFours = countThreats(x, y, aiColor, true);
+                const myThrees = countLiveThrees(x, y, aiColor);
+                score += myFours * 5000 + myThrees * 1000;
+                gameState.board[index] = EMPTY;
+                
+                // 4. 評估防守
+                gameState.board[index] = opponentColor;
+                const opponentFours = countThreats(x, y, opponentColor, true);
+                const opponentThrees = countLiveThrees(x, y, opponentColor);
+                score += opponentFours * 4000 + opponentThrees * 800;
+                gameState.board[index] = EMPTY;
+                
+                // 5. 位置加分（中心、靠近棋群）
+                const centerX = gameState.boardSize / 2;
+                const centerY = gameState.boardSize / 2;
+                const distToCenter = Math.abs(x - centerX) + Math.abs(y - centerY);
+                score += (gameState.boardSize - distToCenter) * 10;
+                
+                // 記錄最佳分數
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMoves = [[x, y]];
+                } else if (score === bestScore) {
+                    bestMoves.push([x, y]);
+                }
+            });
+            
+            // 隨機選擇一個最佳落點
+            if (bestMoves.length > 0) {
+                const [x, y] = bestMoves[Math.floor(Math.random() * bestMoves.length)];
+                makeMove(x, y);
+            }
+        }
+        
+        // ==================== 候選點生成 ====================
+        function getCandidates() {
+            const candidates = new Set();
+            
+            // 如果棋盤空，返回中心點
+            if (gameState.moves.length === 0) {
+                const center = Math.floor(gameState.boardSize / 2);
+                return [[center, center]];
+            }
+            
+            // 獲取所有已落子點周圍的空點（距離 <= 2）
+            gameState.moves.forEach(move => {
+                for (let dy = -2; dy <= 2; dy++) {
+                    for (let dx = -2; dx <= 2; dx++) {
+                        const nx = move.x + dx;
+                        const ny = move.y + dy;
+                        
+                        if (isValid(nx, ny) && getCell(nx, ny) === EMPTY) {
+                            candidates.add(`${nx},${ny}`);
+                        }
+                    }
+                }
+            });
+            
+            return Array.from(candidates).map(pos => pos.split(',').map(Number));
+        }
+        
+        // ==================== 悔棋 ====================
+        function undo() {
+            if (gameState.moves.length === 0) {
+                showMessage('沒有可悔棋的步數', 'error');
+                return;
+            }
+            
+            // 雙人模式：回退1步
+            // 人機模式：回退2步
+            const steps = gameState.config.versusMode === '2p' ? 1 : 2;
+            const actualSteps = Math.min(steps, gameState.moves.length);
+            
+            for (let i = 0; i < actualSteps; i++) {
+                const lastMove = gameState.moves.pop();
+                const index = lastMove.y * gameState.boardSize + lastMove.x;
+                gameState.board[index] = EMPTY;
+            }
+            
+            // 更新當前玩家
+            if (gameState.moves.length === 0) {
+                gameState.currentPlayer = BLACK;
+            } else {
+                const lastMove = gameState.moves[gameState.moves.length - 1];
+                gameState.currentPlayer = lastMove.color === BLACK ? WHITE : BLACK;
+            }
+            
+            gameState.gameOver = false;
+            gameState.lastMove = gameState.moves.length > 0 ? gameState.moves[gameState.moves.length - 1] : null;
+            
+            drawBoard();
+            updateStatus();
+            showMessage(`已悔棋 ${actualSteps} 步`, 'info');
+        }
+        
+        // ==================== 工具函數 ====================
+        function isValid(x, y) {
+            return x >= 0 && x < gameState.boardSize && y >= 0 && y < gameState.boardSize;
+        }
+        
+        function getCell(x, y) {
+            if (!isValid(x, y)) return null;
+            return gameState.board[y * gameState.boardSize + x];
+        }
+        
+        function updateStatus() {
+            document.getElementById('currentPlayer').innerHTML = 
+                `<span class="player-indicator ${gameState.currentPlayer === BLACK ? 'black' : 'white'}"></span>` +
+                PLAYER_NAMES[gameState.currentPlayer];
+            
+            const modeText = gameState.config.versusMode === '2p' ? '雙人' : '人機';
+            const humanText = gameState.config.humanColor === BLACK ? '(人類執黑)' : '(人類執白)';
+            document.getElementById('currentMode').textContent = 
+                modeText + (gameState.config.versusMode === 'ai' ? ` ${humanText}` : '');
+            
+            document.getElementById('currentRule').textContent = 
+                gameState.config.ruleMode === 'free' ? '自由規則' : '禁手規則';
+            
+            document.getElementById('moveCount').textContent = gameState.moves.length;
+        }
+        
+        function showMessage(text, type = 'info') {
+            messageBox.className = 'message-box';
+            if (type === 'error') messageBox.classList.add('error');
+            if (type === 'success') messageBox.classList.add('success');
+            messageBox.innerHTML = `<p>${text}</p>`;
+        }
+        
+        // ==================== 事件監聽 ====================
+        document.getElementById('newGame').addEventListener('click', initGame);
+        document.getElementById('undo').addEventListener('click', undo);
+        document.getElementById('restart').addEventListener('click', initGame);
+        
+        // 設定變更時更新人類顏色選項可見性
+        document.getElementById('versusMode').addEventListener('change', (e) => {
+            const humanColorGroup = document.getElementById('humanColor').parentElement;
+            humanColorGroup.style.display = e.target.value === 'ai' ? 'flex' : 'none';
+        });
+        
+        // 初始化時顯示/隱藏人類顏色選項
+        window.addEventListener('DOMContentLoaded', () => {
+            const versusMode = document.getElementById('versusMode').value;
+            const humanColorGroup = document.getElementById('humanColor').parentElement;
+            humanColorGroup.style.display = versusMode === 'ai' ? 'flex' : 'none';
+        });
+    </script>
+</body>
+</html>
