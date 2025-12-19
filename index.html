@@ -267,6 +267,8 @@
         const CANVAS_SIZE = 600;
         const CELL_SIZE = CANVAS_SIZE / (BOARD_SIZE + 1);
         const STONE_RADIUS = CELL_SIZE * 0.4;
+        const CENTER_POS = Math.floor(BOARD_SIZE / 2);
+        const AI_MOVE_DELAY = 300;
         
         const EMPTY = 0;
         const BLACK = 1;
@@ -459,8 +461,8 @@
                 let score = 0;
 
                 // Center preference
-                const centerX = 7;
-                const centerY = 7;
+                const centerX = CENTER_POS;
+                const centerY = CENTER_POS;
                 const distToCenter = Math.abs(x - centerX) + Math.abs(y - centerY);
                 score += (14 - distToCenter) * 2;
 
@@ -519,7 +521,7 @@
 
                 // If board is empty, return center
                 if (occupied.size === 0) {
-                    return [{ x: 7, y: 7 }];
+                    return [{ x: CENTER_POS, y: CENTER_POS }];
                 }
 
                 // Find positions within 2 cells of occupied positions
@@ -745,7 +747,7 @@
                 this.showMessage('電腦思考中...', 'info');
 
                 // Computer move with slight delay for better UX
-                setTimeout(() => this.makeComputerMove(), 300);
+                setTimeout(() => this.makeComputerMove(), AI_MOVE_DELAY);
             }
 
             makeComputerMove() {
