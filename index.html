@@ -588,9 +588,10 @@
         // ==================== 活三計數 ====================
         function countLiveThrees(x, y, player) {
             const patterns = [
-                '.XXX.',
-                '.XX.X.',
-                '.X.XX.'
+                '.XXX.',   // 連續活三
+                '.XX.X.',  // 跳一活三
+                '.X.XX.',  // 跳一活三（另一側）
+                '.X.X.X.'  // 跳二活三
             ];
             
             return countPatternDirections(x, y, player, patterns);
@@ -604,11 +605,13 @@
             
             if (includeRushFour) {
                 patterns.push(
-                    'XXXX.', // 沖四
-                    '.XXXX',
-                    'XXX.X',
-                    'XX.XX',
-                    'X.XXX'
+                    '#XXXX.',  // 沖四（一端被擋）
+                    '.XXXX#',  // 沖四（另一端被擋）
+                    'XXXX.',   // 沖四（邊界）
+                    '.XXXX',   // 沖四（邊界）
+                    'XXX.X',   // 沖四（跳一）
+                    'X.XXX',   // 沖四（跳一）
+                    'XX.XX'    // 沖四（中間跳一）
                 );
             }
             
