@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>五子棋 Gomoku</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            max-width: 700px;
+        }
+
+        .title {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .title h1 {
+            font-size: 2.5em;
+            margin-bottom: 5px;
+        }
+
+        .title p {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .status-area {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+
+        .status-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .status-label {
+            font-weight: bold;
+            color: #555;
+        }
+
+        .status-value {
+            color: #333;
+        }
+
+        .message-area {
+            text-align: center;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .message-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .message-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .message-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .board-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            border: 2px solid #333;
+            border-radius: 5px;
+            cursor: crosshair;
+            background: #daa520;
+        }
+
+        canvas:hover {
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 1em;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-secondary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .settings-group {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .settings-group label {
+            font-weight: bold;
+            color: #555;
+            margin-right: 10px;
+        }
+
+        select {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            background: white;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        @media (max-width: 600px) {
+            .game-container {
+                padding: 15px;
+            }
+
+            .title h1 {
+                font-size: 2em;
+            }
+
+            canvas {
+                max-width: 100%;
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- Title Section -->
+        <div class="title">
+            <h1>五子棋 Gomoku</h1>
+            <p>Single-File Web Game v1.0</p>
+        </div>
+
+        <!-- Status Section -->
+        <div class="status-area">
+            <div class="status-row">
+                <span class="status-label">當前回合：</span>
+                <span class="status-value" id="currentTurn">黑棋 (玩家)</span>
+            </div>
+            <div class="status-row">
+                <span class="status-label">步數：</span>
+                <span class="status-value" id="moveCount">0</span>
+            </div>
+            <div class="status-row">
+                <span class="status-label">規則模式：</span>
+                <span class="status-value" id="ruleMode">自由規則</span>
+            </div>
+        </div>
+
+        <!-- Message Area -->
+        <div class="message-area message-info" id="messageArea">
+            點擊棋盤開始遊戲
+        </div>
+
+        <!-- Board Section -->
+        <div class="board-container">
+            <canvas id="board" width="600" height="600"></canvas>
+        </div>
+
+        <!-- Control Section -->
+        <div class="controls">
+            <div class="button-group">
+                <button class="btn-primary" id="newGameBtn">新遊戲</button>
+                <button class="btn-secondary" id="undoBtn">悔棋</button>
+            </div>
+            <div class="settings-group">
+                <label for="ruleSelect">規則模式：</label>
+                <select id="ruleSelect">
+                    <option value="FREE">自由規則（無禁手）</option>
+                    <option value="STANDARD">標準規則（黑棋禁手）- 未實作</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================================
+        // Game Constants and Configuration
+        // ============================================================================
+        const BOARD_SIZE = 15;
+        const CANVAS_SIZE = 600;
+        const CELL_SIZE = CANVAS_SIZE / (BOARD_SIZE + 1);
+        const STONE_RADIUS = CELL_SIZE * 0.4;
+        
+        const EMPTY = 0;
+        const BLACK = 1;
+        const WHITE = 2;
+        
+        const GAME_STATE = {
+            READY: 'READY',
+            PLAYING: 'PLAYING',
+            BLACK_WIN: 'BLACK_WIN',
+            WHITE_WIN: 'WHITE_WIN',
+            DRAW: 'DRAW'
+        };
+        
+        const RULE_MODE = {
+            FREE: 'FREE',
+            STANDARD: 'STANDARD'
+        };
+
+        // ============================================================================
+        // Game State Management
+        // ============================================================================
+        class GameState {
+            constructor() {
+                this.grid = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(EMPTY));
+                this.moveHistory = [];
+                this.currentPlayer = BLACK;
+                this.gameState = GAME_STATE.READY;
+                this.ruleMode = RULE_MODE.FREE;
+            }
+
+            reset() {
+                this.grid = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(EMPTY));
+                this.moveHistory = [];
+                this.currentPlayer = BLACK;
+                this.gameState = GAME_STATE.PLAYING;
+            }
+
+            makeMove(x, y, color) {
+                if (!this.isValidMove(x, y)) {
+                    return false;
+                }
+                
+                this.grid[y][x] = color;
+                this.moveHistory.push({ x, y, color, timestamp: Date.now() });
+                return true;
+            }
+
+            isValidMove(x, y) {
+                if (x < 0 || x >= BOARD_SIZE || y < 0 || y >= BOARD_SIZE) {
+                    return false;
+                }
+                return this.grid[y][x] === EMPTY;
+            }
+
+            undo() {
+                if (this.moveHistory.length < 2) {
+                    return false;
+                }
+                
+                // Undo last two moves (player + computer)
+                const move2 = this.moveHistory.pop();
+                const move1 = this.moveHistory.pop();
+                
+                this.grid[move2.y][move2.x] = EMPTY;
+                this.grid[move1.y][move1.x] = EMPTY;
+                
+                this.currentPlayer = BLACK;
+                this.gameState = GAME_STATE.PLAYING;
+                return true;
+            }
+
+            checkWin(x, y, color) {
+                const directions = [
+                    { dx: 1, dy: 0 },  // horizontal
+                    { dx: 0, dy: 1 },  // vertical
+                    { dx: 1, dy: 1 },  // diagonal \
+                    { dx: 1, dy: -1 }  // diagonal /
+                ];
+
+                for (let dir of directions) {
+                    let count = 1;
+                    
+                    // Check positive direction
+                    count += this.countDirection(x, y, color, dir.dx, dir.dy);
+                    // Check negative direction
+                    count += this.countDirection(x, y, color, -dir.dx, -dir.dy);
+                    
+                    if (count >= 5) {
+                        return true;
+                    }
+                }
+                
+                return false;
+            }
+
+            countDirection(x, y, color, dx, dy) {
+                let count = 0;
+                let nx = x + dx;
+                let ny = y + dy;
+                
+                while (nx >= 0 && nx < BOARD_SIZE && ny >= 0 && ny < BOARD_SIZE) {
+                    if (this.grid[ny][nx] !== color) {
+                        break;
+                    }
+                    count++;
+                    nx += dx;
+                    ny += dy;
+                }
+                
+                return count;
+            }
+
+            isBoardFull() {
+                for (let y = 0; y < BOARD_SIZE; y++) {
+                    for (let x = 0; x < BOARD_SIZE; x++) {
+                        if (this.grid[y][x] === EMPTY) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }
+
+            switchPlayer() {
+                this.currentPlayer = this.currentPlayer === BLACK ? WHITE : BLACK;
+            }
+        }
+
+        // ============================================================================
+        // AI Logic
+        // ============================================================================
+        class GomokuAI {
+            constructor(gameState) {
+                this.gameState = gameState;
+            }
+
+            getBestMove() {
+                // Priority 1: Check for immediate win
+                const winMove = this.findWinningMove(WHITE);
+                if (winMove) return winMove;
+
+                // Priority 2: Block opponent's immediate win
+                const blockMove = this.findWinningMove(BLACK);
+                if (blockMove) return blockMove;
+
+                // Priority 3: Find best strategic move
+                return this.findBestStrategicMove();
+            }
+
+            findWinningMove(color) {
+                const candidates = this.getCandidateMoves();
+                
+                for (let pos of candidates) {
+                    // Simulate move
+                    this.gameState.grid[pos.y][pos.x] = color;
+                    const isWin = this.gameState.checkWin(pos.x, pos.y, color);
+                    this.gameState.grid[pos.y][pos.x] = EMPTY;
+                    
+                    if (isWin) {
+                        return pos;
+                    }
+                }
+                
+                return null;
+            }
+
+            findBestStrategicMove() {
+                const candidates = this.getCandidateMoves();
+                
+                if (candidates.length === 0) {
+                    // First move: place at center
+                    return { x: 7, y: 7 };
+                }
+
+                let bestScore = -Infinity;
+                let bestMove = candidates[0];
+
+                for (let pos of candidates) {
+                    const score = this.evaluatePosition(pos.x, pos.y);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMove = pos;
+                    }
+                }
+
+                return bestMove;
+            }
+
+            evaluatePosition(x, y) {
+                let score = 0;
+
+                // Center preference
+                const centerX = 7;
+                const centerY = 7;
+                const distToCenter = Math.abs(x - centerX) + Math.abs(y - centerY);
+                score += (14 - distToCenter) * 2;
+
+                // Evaluate lines for AI (WHITE)
+                score += this.evaluateLines(x, y, WHITE) * 10;
+                
+                // Evaluate blocking opponent (BLACK)
+                score += this.evaluateLines(x, y, BLACK) * 8;
+
+                return score;
+            }
+
+            evaluateLines(x, y, color) {
+                const directions = [
+                    { dx: 1, dy: 0 },
+                    { dx: 0, dy: 1 },
+                    { dx: 1, dy: 1 },
+                    { dx: 1, dy: -1 }
+                ];
+
+                let totalScore = 0;
+
+                for (let dir of directions) {
+                    // Simulate placing stone
+                    this.gameState.grid[y][x] = color;
+                    
+                    let count = 1;
+                    count += this.gameState.countDirection(x, y, color, dir.dx, dir.dy);
+                    count += this.gameState.countDirection(x, y, color, -dir.dx, -dir.dy);
+                    
+                    // Remove simulated stone
+                    this.gameState.grid[y][x] = EMPTY;
+                    
+                    // Score based on line length
+                    if (count >= 4) totalScore += 100;
+                    else if (count === 3) totalScore += 10;
+                    else if (count === 2) totalScore += 3;
+                    else totalScore += 1;
+                }
+
+                return totalScore;
+            }
+
+            getCandidateMoves() {
+                const candidates = [];
+                const occupied = new Set();
+
+                // Collect all occupied positions
+                for (let y = 0; y < BOARD_SIZE; y++) {
+                    for (let x = 0; x < BOARD_SIZE; x++) {
+                        if (this.gameState.grid[y][x] !== EMPTY) {
+                            occupied.add(`${x},${y}`);
+                        }
+                    }
+                }
+
+                // If board is empty, return center
+                if (occupied.size === 0) {
+                    return [{ x: 7, y: 7 }];
+                }
+
+                // Find positions within 2 cells of occupied positions
+                const range = 2;
+                const candidateSet = new Set();
+
+                for (let pos of occupied) {
+                    const [ox, oy] = pos.split(',').map(Number);
+                    
+                    for (let dy = -range; dy <= range; dy++) {
+                        for (let dx = -range; dx <= range; dx++) {
+                            const nx = ox + dx;
+                            const ny = oy + dy;
+                            
+                            if (nx >= 0 && nx < BOARD_SIZE && ny >= 0 && ny < BOARD_SIZE) {
+                                if (this.gameState.grid[ny][nx] === EMPTY) {
+                                    candidateSet.add(`${nx},${ny}`);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                for (let pos of candidateSet) {
+                    const [x, y] = pos.split(',').map(Number);
+                    candidates.push({ x, y });
+                }
+
+                return candidates;
+            }
+        }
+
+        // ============================================================================
+        // UI Rendering
+        // ============================================================================
+        class BoardRenderer {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+            }
+
+            drawBoard() {
+                const ctx = this.ctx;
+                
+                // Clear canvas
+                ctx.fillStyle = '#daa520';
+                ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+                // Draw grid lines
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+
+                for (let i = 0; i < BOARD_SIZE; i++) {
+                    const pos = (i + 1) * CELL_SIZE;
+                    
+                    // Vertical lines
+                    ctx.beginPath();
+                    ctx.moveTo(pos, CELL_SIZE);
+                    ctx.lineTo(pos, CANVAS_SIZE - CELL_SIZE);
+                    ctx.stroke();
+                    
+                    // Horizontal lines
+                    ctx.beginPath();
+                    ctx.moveTo(CELL_SIZE, pos);
+                    ctx.lineTo(CANVAS_SIZE - CELL_SIZE, pos);
+                    ctx.stroke();
+                }
+
+                // Draw star points
+                const starPoints = [
+                    [3, 3], [3, 11], [7, 7], [11, 3], [11, 11]
+                ];
+                
+                ctx.fillStyle = '#000';
+                for (let [x, y] of starPoints) {
+                    const px = (x + 1) * CELL_SIZE;
+                    const py = (y + 1) * CELL_SIZE;
+                    ctx.beginPath();
+                    ctx.arc(px, py, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            drawStone(x, y, color) {
+                const ctx = this.ctx;
+                const px = (x + 1) * CELL_SIZE;
+                const py = (y + 1) * CELL_SIZE;
+
+                // Draw stone shadow
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.beginPath();
+                ctx.arc(px + 2, py + 2, STONE_RADIUS, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw stone
+                if (color === BLACK) {
+                    const gradient = ctx.createRadialGradient(px - 5, py - 5, 5, px, py, STONE_RADIUS);
+                    gradient.addColorStop(0, '#666');
+                    gradient.addColorStop(1, '#000');
+                    ctx.fillStyle = gradient;
+                } else {
+                    const gradient = ctx.createRadialGradient(px - 5, py - 5, 5, px, py, STONE_RADIUS);
+                    gradient.addColorStop(0, '#fff');
+                    gradient.addColorStop(1, '#ddd');
+                    ctx.fillStyle = gradient;
+                }
+
+                ctx.beginPath();
+                ctx.arc(px, py, STONE_RADIUS, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw stone border
+                ctx.strokeStyle = color === BLACK ? '#000' : '#aaa';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+
+            drawAllStones(grid) {
+                for (let y = 0; y < BOARD_SIZE; y++) {
+                    for (let x = 0; x < BOARD_SIZE; x++) {
+                        if (grid[y][x] !== EMPTY) {
+                            this.drawStone(x, y, grid[y][x]);
+                        }
+                    }
+                }
+            }
+
+            redraw(grid) {
+                this.drawBoard();
+                this.drawAllStones(grid);
+            }
+
+            getBoardCoordinates(event) {
+                const rect = this.canvas.getBoundingClientRect();
+                const clickX = event.clientX - rect.left;
+                const clickY = event.clientY - rect.top;
+
+                // Convert to grid coordinates
+                const x = Math.round(clickX / CELL_SIZE) - 1;
+                const y = Math.round(clickY / CELL_SIZE) - 1;
+
+                return { x, y };
+            }
+        }
+
+        // ============================================================================
+        // Game Controller
+        // ============================================================================
+        class GameController {
+            constructor() {
+                this.gameState = new GameState();
+                this.ai = new GomokuAI(this.gameState);
+                this.renderer = new BoardRenderer(document.getElementById('board'));
+                
+                this.initUI();
+                this.renderer.redraw(this.gameState.grid);
+            }
+
+            initUI() {
+                const canvas = document.getElementById('board');
+                canvas.addEventListener('click', (e) => this.handleBoardClick(e));
+
+                document.getElementById('newGameBtn').addEventListener('click', () => this.startNewGame());
+                document.getElementById('undoBtn').addEventListener('click', () => this.handleUndo());
+                document.getElementById('ruleSelect').addEventListener('change', (e) => this.handleRuleChange(e));
+
+                this.updateStatus();
+            }
+
+            startNewGame() {
+                this.gameState.reset();
+                this.renderer.redraw(this.gameState.grid);
+                this.updateStatus();
+                this.showMessage('遊戲開始！黑棋先手', 'info');
+            }
+
+            handleBoardClick(event) {
+                if (this.gameState.gameState !== GAME_STATE.PLAYING && this.gameState.gameState !== GAME_STATE.READY) {
+                    this.showMessage('遊戲已結束，請開始新遊戲', 'error');
+                    return;
+                }
+
+                if (this.gameState.currentPlayer !== BLACK) {
+                    this.showMessage('請等待電腦落子', 'error');
+                    return;
+                }
+
+                const { x, y } = this.renderer.getBoardCoordinates(event);
+
+                if (!this.gameState.isValidMove(x, y)) {
+                    if (x < 0 || x >= BOARD_SIZE || y < 0 || y >= BOARD_SIZE) {
+                        this.showMessage('請點擊棋盤內的交叉點', 'error');
+                    } else {
+                        this.showMessage('此位置已有棋子', 'error');
+                    }
+                    return;
+                }
+
+                this.makePlayerMove(x, y);
+            }
+
+            makePlayerMove(x, y) {
+                if (this.gameState.gameState === GAME_STATE.READY) {
+                    this.gameState.gameState = GAME_STATE.PLAYING;
+                }
+
+                this.gameState.makeMove(x, y, BLACK);
+                this.renderer.redraw(this.gameState.grid);
+                this.updateStatus();
+
+                if (this.gameState.checkWin(x, y, BLACK)) {
+                    this.endGame(GAME_STATE.BLACK_WIN);
+                    return;
+                }
+
+                if (this.gameState.isBoardFull()) {
+                    this.endGame(GAME_STATE.DRAW);
+                    return;
+                }
+
+                this.gameState.switchPlayer();
+                this.updateStatus();
+                this.showMessage('電腦思考中...', 'info');
+
+                // Computer move with slight delay for better UX
+                setTimeout(() => this.makeComputerMove(), 300);
+            }
+
+            makeComputerMove() {
+                const move = this.ai.getBestMove();
+                
+                if (!move) {
+                    this.endGame(GAME_STATE.DRAW);
+                    return;
+                }
+
+                this.gameState.makeMove(move.x, move.y, WHITE);
+                this.renderer.redraw(this.gameState.grid);
+                this.updateStatus();
+
+                if (this.gameState.checkWin(move.x, move.y, WHITE)) {
+                    this.endGame(GAME_STATE.WHITE_WIN);
+                    return;
+                }
+
+                if (this.gameState.isBoardFull()) {
+                    this.endGame(GAME_STATE.DRAW);
+                    return;
+                }
+
+                this.gameState.switchPlayer();
+                this.updateStatus();
+                this.showMessage('輪到您落子', 'info');
+            }
+
+            handleUndo() {
+                if (this.gameState.gameState !== GAME_STATE.PLAYING) {
+                    this.showMessage('只能在遊戲進行中悔棋', 'error');
+                    return;
+                }
+
+                if (this.gameState.moveHistory.length < 2) {
+                    this.showMessage('無法悔棋：步數不足', 'error');
+                    return;
+                }
+
+                const success = this.gameState.undo();
+                if (success) {
+                    this.renderer.redraw(this.gameState.grid);
+                    this.updateStatus();
+                    this.showMessage('已悔棋', 'info');
+                } else {
+                    this.showMessage('悔棋失敗', 'error');
+                }
+            }
+
+            handleRuleChange(event) {
+                const value = event.target.value;
+                this.gameState.ruleMode = value;
+                
+                if (value === RULE_MODE.STANDARD) {
+                    this.showMessage('標準規則（黑棋禁手）尚未實作', 'error');
+                    // Revert to FREE mode
+                    event.target.value = RULE_MODE.FREE;
+                    this.gameState.ruleMode = RULE_MODE.FREE;
+                } else {
+                    this.updateStatus();
+                    this.showMessage('已切換至自由規則', 'info');
+                }
+            }
+
+            endGame(state) {
+                this.gameState.gameState = state;
+                this.updateStatus();
+
+                if (state === GAME_STATE.BLACK_WIN) {
+                    this.showMessage('🎉 黑棋獲勝！恭喜玩家！', 'success');
+                } else if (state === GAME_STATE.WHITE_WIN) {
+                    this.showMessage('⚪ 白棋獲勝！電腦獲勝！', 'success');
+                } else if (state === GAME_STATE.DRAW) {
+                    this.showMessage('🤝 和局！棋盤已滿', 'info');
+                }
+            }
+
+            updateStatus() {
+                const turnText = this.gameState.currentPlayer === BLACK ? '黑棋 (玩家)' : '白棋 (電腦)';
+                document.getElementById('currentTurn').textContent = turnText;
+                document.getElementById('moveCount').textContent = this.gameState.moveHistory.length;
+                
+                const ruleText = this.gameState.ruleMode === RULE_MODE.FREE ? '自由規則' : '標準規則';
+                document.getElementById('ruleMode').textContent = ruleText;
+
+                // Update undo button state
+                const undoBtn = document.getElementById('undoBtn');
+                undoBtn.disabled = this.gameState.moveHistory.length < 2 || this.gameState.gameState !== GAME_STATE.PLAYING;
+            }
+
+            showMessage(text, type = 'info') {
+                const messageArea = document.getElementById('messageArea');
+                messageArea.textContent = text;
+                messageArea.className = 'message-area message-' + type;
+            }
+        }
+
+        // ============================================================================
+        // Initialize Game
+        // ============================================================================
+        let game;
+        window.addEventListener('DOMContentLoaded', () => {
+            game = new GameController();
+        });
+    </script>
+</body>
+</html>
