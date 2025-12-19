@@ -324,8 +324,8 @@
             } else if (size === 19) {
                 canvas.width = 600;
                 canvas.height = 600;
-                CELL_SIZE = Math.floor(600 / (size + 1));
-                PIECE_RADIUS = Math.floor(CELL_SIZE * 0.45);
+                CELL_SIZE = 30;  // 固定為 30，確保 19×19 棋盤正確顯示
+                PIECE_RADIUS = 13;
             }
             
             newGame();
@@ -450,11 +450,15 @@
             }
             
             const rect = canvas.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
+            // 考慮 canvas 的實際顯示大小與內部大小的縮放比例
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (event.clientX - rect.left) * scaleX;
+            const y = (event.clientY - rect.top) * scaleY;
             
-            const i = Math.round((y - CELL_SIZE / 2) / CELL_SIZE);
+            // 計算最接近的交叉點
             const j = Math.round((x - CELL_SIZE / 2) / CELL_SIZE);
+            const i = Math.round((y - CELL_SIZE / 2) / CELL_SIZE);
             
             if (i < 0 || i >= BOARD_SIZE || j < 0 || j >= BOARD_SIZE) {
                 return;
