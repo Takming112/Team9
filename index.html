@@ -222,6 +222,8 @@
         const EMPTY = 0;
         const BLACK = 1;
         const WHITE = 2;
+        const AI_THINKING_DELAY = 500;  // AI 思考延遲（毫秒）
+        const NEIGHBOR_RADIUS = 2;      // AI 搜尋鄰近棋子的半徑
 
         // ========== 全域變數 ==========
         let board = [];
@@ -396,7 +398,7 @@
                         updateStatus();
                     }
                 }
-            }, 500);
+            }, AI_THINKING_DELAY);
         }
 
         // ========== 勝負判定 ==========
@@ -477,7 +479,7 @@
             for (let i = 0; i < BOARD_SIZE; i++) {
                 for (let j = 0; j < BOARD_SIZE; j++) {
                     if (board[i][j] === EMPTY) {
-                        if (hasNeighbor(board, i, j, color, 2)) {
+                        if (hasNeighbor(board, i, j, color, NEIGHBOR_RADIUS)) {
                             return {x: i, y: j};
                         }
                     }
@@ -495,7 +497,7 @@
             
             for (let i = 0; i < BOARD_SIZE; i++) {
                 for (let j = 0; j < BOARD_SIZE; j++) {
-                    if (board[i][j] === EMPTY && hasNeighbor(board, i, j, null, 2)) {
+                    if (board[i][j] === EMPTY && hasNeighbor(board, i, j, null, NEIGHBOR_RADIUS)) {
                         candidates.push({x: i, y: j});
                     }
                 }
@@ -580,7 +582,7 @@
                             updateStatus();
                         }
                     }
-                }, 500);
+                }, AI_THINKING_DELAY);
             }
         }
 
@@ -589,7 +591,7 @@
             const turnStatus = document.getElementById('turnStatus');
             
             if (gameOver) {
-                if (board[lastMove.x][lastMove.y] === playerColor) {
+                if (lastMove && board[lastMove.x][lastMove.y] === playerColor) {
                     turnStatus.textContent = '遊戲結束 - 你獲勝！';
                 } else {
                     turnStatus.textContent = '遊戲結束 - AI 獲勝！';
