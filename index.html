@@ -87,7 +87,7 @@
             color: #2980B9;
         }
 
-        #newGame {
+        .button {
             width: 100%;
             padding: 12px 20px;
             font-size: 18px;
@@ -98,15 +98,48 @@
             border-radius: 6px;
             cursor: pointer;
             transition: background-color 0.3s;
-            margin: 15px 0;
+            margin: 8px 0;
         }
 
-        #newGame:hover {
+        .button:hover {
             background-color: #2980B9;
         }
 
-        #newGame:active {
+        .button:active {
             transform: translateY(1px);
+        }
+
+        .button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        .button.secondary {
+            background-color: #95a5a6;
+        }
+
+        .button.secondary:hover:not(:disabled) {
+            background-color: #7f8c8d;
+        }
+
+        .settings {
+            margin-bottom: 15px;
+        }
+
+        .settings label {
+            display: block;
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 5px;
+        }
+
+        .settings select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-bottom: 10px;
         }
 
         .rules {
@@ -174,12 +207,31 @@
         <div class="game-container">
             <canvas id="gameBoard" width="600" height="600"></canvas>
             <div class="info-panel">
+                <div class="info-section settings">
+                    <h2>遊戲設定</h2>
+                    <label for="boardSize">棋盤大小:</label>
+                    <select id="boardSize">
+                        <option value="15">15 × 15</option>
+                        <option value="19">19 × 19</option>
+                    </select>
+                    
+                    <label for="playerStone">玩家顏色:</label>
+                    <select id="playerStone">
+                        <option value="random">隨機</option>
+                        <option value="black">執黑棋 (先手)</option>
+                        <option value="white">執白棋 (後手)</option>
+                    </select>
+                </div>
+
                 <div class="info-section">
                     <h2>遊戲資訊</h2>
                     <div class="status">
                         <div class="status-line">
                             <strong>當前回合:</strong><br>
                             <span id="turnStatus" class="current-turn">準備開始...</span>
+                        </div>
+                        <div class="status-line">
+                            <strong>步數:</strong> <span id="moveCount">0</span>
                         </div>
                         <div class="status-line">
                             <strong>先手:</strong> <span id="firstPlayer">-</span>
@@ -190,7 +242,8 @@
                     </div>
                 </div>
 
-                <button id="newGame">新遊戲</button>
+                <button id="newGame" class="button">新遊戲</button>
+                <button id="undoButton" class="button secondary">悔棋</button>
 
                 <div class="info-section rules">
                     <h3>【五子棋規則】</h3>
@@ -207,6 +260,7 @@
                     <ul>
                         <li>點擊棋盤空位進行落子</li>
                         <li>點擊「新遊戲」按鈕重新開始</li>
+                        <li>點擊「悔棋」可回退兩步</li>
                         <li>AI 會在您落子後自動應手</li>
                     </ul>
                 </div>
@@ -216,9 +270,6 @@
 
     <script>
         // ========== 常數定義 ==========
-        const BOARD_SIZE = 15;
-        const CELL_SIZE = 40;
-        const PIECE_RADIUS = 18;
         const EMPTY = 0;
         const BLACK = 1;
         const WHITE = 2;
@@ -226,7 +277,11 @@
         const NEIGHBOR_RADIUS = 2;      // AI 搜尋鄰近棋子的半徑
 
         // ========== 全域變數 ==========
+        let BOARD_SIZE = 15;
+        let CELL_SIZE = 40;
+        let PIECE_RADIUS = 18;
         let board = [];
+        let moveHistory = [];  // 記錄所有落子：{x, y, stone, seq}
         let currentPlayer = BLACK;
         let playerColor = BLACK;
         let aiColor = WHITE;
@@ -234,6 +289,7 @@
         let lastMove = null;
         let canvas;
         let ctx;
+        let isAIThinking = false;
 
         // ========== 初始化 ==========
         function init() {
@@ -246,8 +302,32 @@
             // 設定事件監聽
             canvas.addEventListener('click', handleClick);
             document.getElementById('newGame').addEventListener('click', newGame);
+            document.getElementById('undoButton').addEventListener('click', undoMove);
+            document.getElementById('boardSize').addEventListener('change', handleBoardSizeChange);
+            document.getElementById('playerStone').addEventListener('change', newGame);
             
             // 開始新遊戲
+            newGame();
+        }
+
+        // ========== 棋盤大小變更 ==========
+        function handleBoardSizeChange() {
+            const size = parseInt(document.getElementById('boardSize').value);
+            BOARD_SIZE = size;
+            
+            // 調整 canvas 和相關參數
+            if (size === 15) {
+                canvas.width = 600;
+                canvas.height = 600;
+                CELL_SIZE = 40;
+                PIECE_RADIUS = 18;
+            } else if (size === 19) {
+                canvas.width = 600;
+                canvas.height = 600;
+                CELL_SIZE = Math.floor(600 / (size + 1));
+                PIECE_RADIUS = Math.floor(CELL_SIZE * 0.45);
+            }
+            
             newGame();
         }
 
@@ -340,7 +420,22 @@
         function placePiece(i, j, color) {
             board[i][j] = color;
             lastMove = {x: i, y: j};
+            
+            // 記錄到歷史
+            moveHistory.push({
+                x: i,
+                y: j,
+                stone: color,
+                seq: moveHistory.length + 1
+            });
+            
             drawBoard();
+            updateMoveCount();
+        }
+
+        // ========== 更新步數顯示 ==========
+        function updateMoveCount() {
+            document.getElementById('moveCount').textContent = moveHistory.length;
         }
 
         // ========== 點擊事件處理 ==========
@@ -350,7 +445,7 @@
                 return;
             }
             
-            if (currentPlayer !== playerColor) {
+            if (currentPlayer !== playerColor || isAIThinking) {
                 return;
             }
             
@@ -374,12 +469,15 @@
             if (checkWin(board, i, j, playerColor)) {
                 gameOver = true;
                 updateStatus();
+                updateUndoButton();
                 setTimeout(() => alert('恭喜你獲勝！'), 100);
                 return;
             }
             
             currentPlayer = aiColor;
+            isAIThinking = true;
             updateStatus();
+            updateUndoButton();
             
             setTimeout(() => {
                 if (!gameOver) {
@@ -389,13 +487,17 @@
                         
                         if (checkWin(board, move.x, move.y, aiColor)) {
                             gameOver = true;
+                            isAIThinking = false;
                             updateStatus();
+                            updateUndoButton();
                             setTimeout(() => alert('AI 獲勝！'), 100);
                             return;
                         }
                         
                         currentPlayer = playerColor;
+                        isAIThinking = false;
                         updateStatus();
+                        updateUndoButton();
                     }
                 }
             }, AI_THINKING_DELAY);
@@ -492,7 +594,9 @@
             let candidates = [];
             
             if (isBoardEmpty(board)) {
-                return {x: 7, y: 7};
+                // 返回棋盤中心點
+                const center = Math.floor(BOARD_SIZE / 2);
+                return {x: center, y: center};
             }
             
             for (let i = 0; i < BOARD_SIZE; i++) {
@@ -546,19 +650,81 @@
             return null;
         }
 
+        // ========== 悔棋功能 ==========
+        function undoMove() {
+            if (isAIThinking) {
+                return;
+            }
+            
+            // 悔棋兩步（玩家 + AI）
+            const stepsToUndo = 2;
+            
+            if (moveHistory.length < stepsToUndo) {
+                alert('無法悔棋：步數不足');
+                return;
+            }
+            
+            // 回退兩步
+            for (let i = 0; i < stepsToUndo && moveHistory.length > 0; i++) {
+                const move = moveHistory.pop();
+                board[move.x][move.y] = EMPTY;
+            }
+            
+            // 更新最後一手
+            if (moveHistory.length > 0) {
+                const lastMoveData = moveHistory[moveHistory.length - 1];
+                lastMove = {x: lastMoveData.x, y: lastMoveData.y};
+            } else {
+                lastMove = null;
+            }
+            
+            // 如果遊戲已結束，恢復為進行中
+            if (gameOver) {
+                gameOver = false;
+            }
+            
+            // 確保輪到玩家
+            currentPlayer = playerColor;
+            
+            drawBoard();
+            updateStatus();
+            updateMoveCount();
+            updateUndoButton();
+        }
+
+        // ========== 更新悔棋按鈕狀態 ==========
+        function updateUndoButton() {
+            const undoButton = document.getElementById('undoButton');
+            // 至少需要 2 步才能悔棋，且不能在 AI 思考時或遊戲結束後
+            undoButton.disabled = moveHistory.length < 2 || isAIThinking;
+        }
+
         // ========== 新遊戲 ==========
         function newGame() {
             board = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(EMPTY));
+            moveHistory = [];
             gameOver = false;
             lastMove = null;
+            isAIThinking = false;
             
             randomizeFirstPlayer();
             drawBoard();
             updateStatus();
+            updateMoveCount();
+            updateUndoButton();
         }
 
         function randomizeFirstPlayer() {
-            const random = Math.floor(Math.random() * 2);
+            const playerStoneChoice = document.getElementById('playerStone').value;
+            let random;
+            
+            if (playerStoneChoice === 'black') {
+                random = 0; // 玩家執黑
+            } else if (playerStoneChoice === 'white') {
+                random = 1; // 玩家執白
+            } else {
+                random = Math.floor(Math.random() * 2); // 隨機
+            }
             
             if (random === 0) {
                 playerColor = BLACK;
@@ -573,13 +739,18 @@
                 document.getElementById('firstPlayer').textContent = 'AI (黑棋)';
                 document.getElementById('playerColorDisplay').textContent = '白棋 (後手)';
                 
+                isAIThinking = true;
+                updateUndoButton();
+                
                 setTimeout(() => {
                     if (!gameOver) {
                         let move = aiMove(board, aiColor, playerColor);
                         if (move) {
                             placePiece(move.x, move.y, aiColor);
                             currentPlayer = playerColor;
+                            isAIThinking = false;
                             updateStatus();
+                            updateUndoButton();
                         }
                     }
                 }, AI_THINKING_DELAY);
@@ -596,11 +767,13 @@
                 } else {
                     turnStatus.textContent = '遊戲結束 - AI 獲勝！';
                 }
+            } else if (isAIThinking) {
+                turnStatus.textContent = 'AI 思考中...';
             } else if (currentPlayer === playerColor) {
                 const colorName = playerColor === BLACK ? '黑棋' : '白棋';
                 turnStatus.textContent = `輪到你下棋 (${colorName})`;
             } else {
-                turnStatus.textContent = 'AI 思考中...';
+                turnStatus.textContent = 'AI 回合';
             }
         }
 
